@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Text Editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/8.4.7/swiper-bundle.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="editor-section">
+      <div class="swiper">
+        <div class="swiper-wrapper">
+          <div class="swiper-slide" data-slide-index="0">
+            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=711&fit=crop" alt="Portrait 1">
+            <div class="text-overlay"></div>
+          </div>
+          <div class="swiper-slide" data-slide-index="1">
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=711&fit=crop" alt="Portrait 2">
+            <div class="text-overlay"></div>
+          </div>
+          <div class="swiper-slide" data-slide-index="2">
+            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=711&fit=crop" alt="Portrait 3">
+            <div class="text-overlay"></div>
+          </div>
+        </div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <h2>Text Controls</h2>
+      <div class="status" id="status">No text selected</div>
+
+      <div class="control-group">
+        <label>Text Content</label>
+        <input type="text" id="textContent" placeholder="Enter text" disabled>
+      </div>
+
+      <div class="control-group">
+        <label>Font Family</label>
+        <select id="fontFamily" disabled>
+          <option value="Arial">Arial</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Impact">Impact</option>
+          <option value="Comic Sans MS">Comic Sans MS</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Font Size (px)</label>
+        <input type="number" id="fontSize" min="10" max="200" value="24" disabled>
+      </div>
+
+      <div class="control-group">
+        <label>Font Color</label>
+        <div class="color-picker-wrapper">
+          <input type="color" id="fontColor" value="#ffffff" disabled>
+          <input type="text" id="fontColorHex" value="#ffffff" disabled>
+        </div>
+      </div>
+
+      <button class="btn" id="addTextBtn">Add Text</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/8.4.7/swiper-bundle.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
