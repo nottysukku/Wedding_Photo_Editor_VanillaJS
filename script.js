@@ -24,6 +24,9 @@ let resizing = false;
 let resizeTarget = null;
 let resizeDir = null; // 'nw','ne','sw','se'
 let startX = 0, startY = 0, startW = 0, startH = 0, startL = 0, startT = 0;
+let startAspect = 1;
+let startFontSize = 24;
+let keepImageAspect = true;
 
 // Debug function
 function debugDrag(message) {
@@ -207,6 +210,10 @@ function startResize(e, target, dir) {
   startH = rect.height;
   startL = rect.left - parentRect.left;
   startT = rect.top - parentRect.top;
+  startAspect = startW / startH;
+  if (target.classList && target.classList.contains('text-element')) {
+    startFontSize = parseInt(getComputedStyle(target).fontSize, 10) || 24;
+  }
 
   // Capture pointer
   try { if (target.setPointerCapture && e.pointerId !== undefined) target.setPointerCapture(e.pointerId); } catch {}
@@ -250,6 +257,26 @@ function handleResizeMove(e, target) {
   newW = Math.max(minW, newW);
   newH = Math.max(minH, newH);
 
+  // Keep image aspect ratio if checkbox enabled
+  if (target.classList.contains('added-image') && keepImageAspect) {
+    const scaleW = newW / startW;
+    const scaleH = newH / startH;
+    if (Math.abs(scaleW - 1) >= Math.abs(scaleH - 1)) {
+      newH = newW / startAspect;
+    } else {
+      newW = newH * startAspect;
+    }
+    // Adjust anchored corner
+    if (resizeDir === 'nw') {
+      newL = startL + (startW - newW);
+      newT = startT + (startH - newH);
+    } else if (resizeDir === 'ne') {
+      newT = startT + (startH - newH);
+    } else if (resizeDir === 'sw') {
+      newL = startL + (startW - newW);
+    }
+  }
+
   // Constrain to overlay
   const maxL = overlayRect.width - newW;
   const maxT = overlayRect.height - newH;
@@ -260,6 +287,16 @@ function handleResizeMove(e, target) {
   target.style.height = newH + 'px';
   target.style.left = newL + 'px';
   target.style.top = newT + 'px';
+
+  // Scale font size for text proportionally to width change
+  if (target.classList.contains('text-element')) {
+    const scale = newW / startW;
+    const newFont = Math.max(8, Math.round(startFontSize * scale));
+    target.style.fontSize = newFont + 'px';
+    if (selectedTextElement === target) {
+      fontSizeInput.value = newFont;
+    }
+  }
 }
 
 function finishResize(e) {
@@ -275,6 +312,7 @@ function finishResize(e) {
 // Image upload and addition
 const addImageBtn = document.getElementById('addImageBtn');
 const imageUpload = document.getElementById('imageUpload');
+const keepAspectCheckbox = document.getElementById('keepAspect');
 if (addImageBtn && imageUpload) {
   addImageBtn.addEventListener('click', () => imageUpload.click());
   imageUpload.addEventListener('change', (e) => {
@@ -288,6 +326,13 @@ if (addImageBtn && imageUpload) {
       imageUpload.value = '';
     };
     reader.readAsDataURL(file);
+  });
+}
+
+if (keepAspectCheckbox) {
+  keepImageAspect = !!keepAspectCheckbox.checked;
+  keepAspectCheckbox.addEventListener('change', (e) => {
+    keepImageAspect = !!e.target.checked;
   });
 }
 
@@ -383,7 +428,7 @@ function selectTextElement(textEl) {
 
 // Deselect all text
 function deselectAllText() {
-  document.querySelectorAll('.text-element').forEach(el => {
+  document.querySelectorAll('.text-element, .added-image').forEach(el => {
     el.classList.remove('selected');
   });
   selectedTextElement = null;
@@ -420,6 +465,21 @@ document.addEventListener('mouseup', () => {
   document.body.style.cursor = 'default';
   isDragging = false;
   activePointerId = null;
+});
+
+// Global resize listeners (handle both text and image resizing)
+document.addEventListener('pointermove', (e) => {
+  if (!resizing || !resizeTarget) return;
+  e.preventDefault();
+  e.stopPropagation();
+  handleResizeMove(e, resizeTarget);
+});
+
+document.addEventListener('pointerup', (e) => {
+  if (!resizing) return;
+  e.preventDefault();
+  e.stopPropagation();
+  finishResize(e);
 });
 
 // Click outside to deselect
