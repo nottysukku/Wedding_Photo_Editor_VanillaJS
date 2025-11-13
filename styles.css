@@ -26,12 +26,14 @@
     }
 
     .swiper {
-      width: 100%;
-      aspect-ratio: 9/16;
-      max-height: 70vh;
+      width: min(420px, 100%);
+      aspect-ratio: 9 / 16; /* enforce 9:16 canvas */
+      height: auto;
+      max-height: 80vh;
       border-radius: 8px;
       overflow: hidden;
       position: relative;
+      margin: 0 auto;
     }
 
     .swiper-slide {
@@ -65,7 +67,7 @@
       -ms-user-select: none;
       -webkit-user-drag: none;
       touch-action: none; /* prevent scrolling while dragging on touch */
-      white-space: nowrap;
+      white-space: pre-wrap; /* allow wrapping when resized */
       padding: 4px 8px;
       z-index: 10;
       pointer-events: auto;
@@ -127,6 +129,57 @@
       background: rgba(76, 175, 80, 0.1);
       box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
     }
+
+    /* Added image container */
+    .added-image {
+      position: absolute;
+      left: 60px;
+      top: 60px;
+      width: 200px;
+      height: 200px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      z-index: 10;
+      cursor: move;
+      touch-action: none;
+      pointer-events: auto;
+      background: rgba(0,0,0,0.02);
+    }
+    .added-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+    .added-image.selected {
+      border: 2px solid #4CAF50;
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+
+    /* Resize handles common */
+    .resize-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #4CAF50;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(0,0,0,0.2);
+      z-index: 20;
+      pointer-events: auto;
+      touch-action: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .text-element.selected .resize-handle,
+    .added-image.selected .resize-handle {
+      opacity: 1;
+    }
+    .resize-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+    .resize-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+    .resize-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+    .resize-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
 
     .swiper-button-next, .swiper-button-prev {
       color: #fff;

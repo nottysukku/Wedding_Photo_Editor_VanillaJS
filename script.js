@@ -20,6 +20,10 @@ let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;
 let activePointerId = null; // supports mouse and touch via Pointer Events
+let resizing = false;
+let resizeTarget = null;
+let resizeDir = null; // 'nw','ne','sw','se'
+let startX = 0, startY = 0, startW = 0, startH = 0, startL = 0, startT = 0;
 
 // Debug function
 function debugDrag(message) {
@@ -54,9 +58,14 @@ function addTextElement(overlay, text, x, y) {
   textEl.textContent = text;
   textEl.style.left = x + 'px';
   textEl.style.top = y + 'px';
+  textEl.style.width = '200px';
+  textEl.style.minHeight = '40px';
   textEl.style.fontSize = '24px';
   textEl.style.fontFamily = 'Arial';
   textEl.style.color = '#ffffff';
+
+  // Add resize handles
+  addResizeHandles(textEl);
 
   // Pointer-based drag (works for mouse and touch)
   const onPointerDown = (e) => {
@@ -93,6 +102,10 @@ function addTextElement(overlay, text, x, y) {
   };
 
   const onPointerMove = (e) => {
+    if (resizing && resizeTarget === textEl) {
+      handleResizeMove(e, textEl);
+      return;
+    }
     if (!isDragging) return;
     if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
 
@@ -122,6 +135,10 @@ function addTextElement(overlay, text, x, y) {
   };
 
   const onPointerUp = (e) => {
+    if (resizing && resizeTarget === textEl) {
+      finishResize(e);
+      return;
+    }
     if (!isDragging) return;
     e.preventDefault();
     e.stopPropagation();
@@ -159,6 +176,191 @@ function addTextElement(overlay, text, x, y) {
 
   overlay.appendChild(textEl);
   selectTextElement(textEl);
+}
+
+// Create and attach resize handles to a target element
+function addResizeHandles(target) {
+  const positions = ['nw','ne','sw','se'];
+  positions.forEach(pos => {
+    const h = document.createElement('div');
+    h.className = `resize-handle resize-${pos}`;
+    h.dataset.dir = pos;
+    target.appendChild(h);
+
+    h.addEventListener('pointerdown', (e) => startResize(e, target, pos));
+  });
+}
+
+function startResize(e, target, dir) {
+  e.preventDefault();
+  e.stopPropagation();
+  selectTextElement(target);
+
+  resizing = true;
+  resizeTarget = target;
+  resizeDir = dir;
+  startX = e.clientX;
+  startY = e.clientY;
+  const rect = target.getBoundingClientRect();
+  const parentRect = target.parentElement.getBoundingClientRect();
+  startW = rect.width;
+  startH = rect.height;
+  startL = rect.left - parentRect.left;
+  startT = rect.top - parentRect.top;
+
+  // Capture pointer
+  try { if (target.setPointerCapture && e.pointerId !== undefined) target.setPointerCapture(e.pointerId); } catch {}
+
+  // Disable Swiper interaction during resize
+  swiper.allowTouchMove = false;
+  swiper.allowSlideNext = false;
+  swiper.allowSlidePrev = false;
+}
+
+function handleResizeMove(e, target) {
+  const activeSlide = document.querySelector('.swiper-slide-active');
+  const textOverlay = activeSlide.querySelector('.text-overlay');
+  if (!textOverlay) return;
+  const overlayRect = textOverlay.getBoundingClientRect();
+
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+
+  let newW = startW;
+  let newH = startH;
+  let newL = startL;
+  let newT = startT;
+
+  if (resizeDir.includes('e')) {
+    newW = startW + dx;
+  }
+  if (resizeDir.includes('s')) {
+    newH = startH + dy;
+  }
+  if (resizeDir.includes('w')) {
+    newW = startW - dx;
+    newL = startL + dx;
+  }
+  if (resizeDir.includes('n')) {
+    newH = startH - dy;
+    newT = startT + dy;
+  }
+
+  const minW = 40, minH = 30;
+  newW = Math.max(minW, newW);
+  newH = Math.max(minH, newH);
+
+  // Constrain to overlay
+  const maxL = overlayRect.width - newW;
+  const maxT = overlayRect.height - newH;
+  newL = Math.max(0, Math.min(newL, maxL));
+  newT = Math.max(0, Math.min(newT, maxT));
+
+  target.style.width = newW + 'px';
+  target.style.height = newH + 'px';
+  target.style.left = newL + 'px';
+  target.style.top = newT + 'px';
+}
+
+function finishResize(e) {
+  resizing = false;
+  resizeTarget = null;
+  resizeDir = null;
+  try { if (e.target.releasePointerCapture && e.pointerId !== undefined) e.target.releasePointerCapture(e.pointerId); } catch {}
+  swiper.allowTouchMove = true;
+  swiper.allowSlideNext = true;
+  swiper.allowSlidePrev = true;
+}
+
+// Image upload and addition
+const addImageBtn = document.getElementById('addImageBtn');
+const imageUpload = document.getElementById('imageUpload');
+if (addImageBtn && imageUpload) {
+  addImageBtn.addEventListener('click', () => imageUpload.click());
+  imageUpload.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const activeSlide = document.querySelector('.swiper-slide-active');
+      const overlay = activeSlide.querySelector('.text-overlay');
+      addImageElement(overlay, reader.result);
+      imageUpload.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function addImageElement(overlay, src) {
+  const wrap = document.createElement('div');
+  wrap.className = 'added-image';
+  wrap.style.left = '80px';
+  wrap.style.top = '80px';
+  wrap.style.width = '220px';
+  wrap.style.height = '220px';
+
+  const img = document.createElement('img');
+  img.src = src;
+  wrap.appendChild(img);
+
+  addResizeHandles(wrap);
+
+  // Pointer drag for image
+  let imgPointerId = null;
+  let imgDrag = false;
+  let imgOffX = 0, imgOffY = 0;
+
+  wrap.addEventListener('pointerdown', (e) => {
+    // Ignore if starting on a handle
+    if (e.target.classList.contains('resize-handle')) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    wrap.classList.add('selected');
+    imgDrag = true;
+    imgPointerId = e.pointerId ?? 'mouse';
+    const rect = wrap.getBoundingClientRect();
+    imgOffX = e.clientX - rect.left;
+    imgOffY = e.clientY - rect.top;
+    try { if (wrap.setPointerCapture && e.pointerId !== undefined) wrap.setPointerCapture(e.pointerId); } catch {}
+    swiper.allowTouchMove = false;
+    swiper.allowSlideNext = false;
+    swiper.allowSlidePrev = false;
+  });
+
+  wrap.addEventListener('pointermove', (e) => {
+    if (!imgDrag) return;
+    if (imgPointerId !== null && e.pointerId !== undefined && e.pointerId !== imgPointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const activeSlide = document.querySelector('.swiper-slide-active');
+    const textOverlay = activeSlide.querySelector('.text-overlay');
+    if (!textOverlay) return;
+    const overlayRect = textOverlay.getBoundingClientRect();
+
+    let x = e.clientX - overlayRect.left - imgOffX;
+    let y = e.clientY - overlayRect.top - imgOffY;
+    const maxX = overlayRect.width - wrap.offsetWidth;
+    const maxY = overlayRect.height - wrap.offsetHeight;
+    x = Math.max(0, Math.min(x, maxX));
+    y = Math.max(0, Math.min(y, maxY));
+    wrap.style.left = x + 'px';
+    wrap.style.top = y + 'px';
+  });
+
+  const stopImgDrag = (e) => {
+    if (!imgDrag) return;
+    imgDrag = false;
+    try { if (wrap.releasePointerCapture && e.pointerId !== undefined) wrap.releasePointerCapture(e.pointerId); } catch {}
+    swiper.allowTouchMove = true;
+    swiper.allowSlideNext = true;
+    swiper.allowSlidePrev = true;
+  };
+  wrap.addEventListener('pointerup', stopImgDrag);
+  wrap.addEventListener('pointercancel', stopImgDrag);
+
+  overlay.appendChild(wrap);
 }
 
 // Select text element
